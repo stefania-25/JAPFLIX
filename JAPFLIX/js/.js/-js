@@ -1,0 +1,76 @@
+document.addEventListener('DOMContentLoaded', function() {
+    // Obtener los datos de películas al cargar la página desde la API
+    fetch('https://japceibal.github.io/japflix_api/movies-data.json')
+        .then(respuesta => respuesta.json())
+        .then(datos => {
+            // Almacenar los datos en una variable global, pero no mostrarlos inicialmente
+            window.peliculas = datos;
+            console.log('Datos de películas cargados:', window.peliculas.length, 'películas');
+        })
+        .catch(error => console.error('Error al obtener películas:', error));
+
+    // Funcionalidad de búsqueda
+    const btnBuscar = document.getElementById('btnBuscar'); // Botón de búsqueda
+    const inputBuscar = document.getElementById('inputBuscar'); // Campo de entrada de búsqueda
+    const lista = document.getElementById('lista'); // Lista donde se muestran las películas
+
+    btnBuscar.addEventListener('click', function() {
+        const busqueda = inputBuscar.value.toLowerCase(); // Obtener el valor de búsqueda en minúsculas
+        if (!window.peliculas) {
+            alert('Datos de películas no cargados aún.');
+            return;
+        }
+        if (!busqueda) {
+            alert('Por favor, ingresa un valor para buscar.');
+            return;
+        }
+        // Filtrar películas que coincidan con la búsqueda en título, géneros, tagline u overview
+        const peliculasFiltradas = window.peliculas.filter(pelicula => 
+            pelicula.title.toLowerCase().includes(busqueda) || 
+            pelicula.genres.some(genero => typeof genero === 'object' && genero.name && genero.name.toLowerCase().includes(busqueda)) ||
+            (pelicula.tagline && typeof pelicula.tagline === 'string' && pelicula.tagline.toLowerCase().includes(busqueda)) ||
+            (typeof pelicula.overview === 'string' && pelicula.overview.toLowerCase().includes(busqueda))
+        );
+        mostrarPeliculas(peliculasFiltradas); // Mostrar las películas filtradas
+    });
+
+    // Función para mostrar las películas en la lista
+    function mostrarPeliculas(peliculas) {
+        lista.innerHTML = ''; // Limpiar la lista antes de agregar nuevas películas
+        peliculas.forEach(pelicula => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item bg-dark text-light';
+            li.innerHTML = `
+                <h5>${pelicula.title}</h5>
+                <p>${pelicula.tagline || pelicula.overview}</p>
+                <div>${obtenerEstrellas(pelicula.vote_average)}</div>
+            `;
+            li.addEventListener('click', function() {
+                mostrarDetalles(pelicula); // Agregar evento de clic para mostrar detalles
+            });
+            lista.appendChild(li);
+        });
+    }
+
+    // Función para mostrar los detalles de una película en el offcanvas
+    function mostrarDetalles(pelicula) {
+        // Llenar los elementos del offcanvas con los datos de la película
+        document.getElementById('detalleTitulo').textContent = pelicula.title;
+        document.getElementById('detalleOverview').textContent = pelicula.overview || 'No disponible';
+        document.getElementById('detalleGeneros').textContent = pelicula.genres.map(g => g.name || g).join(', ');
+        document.getElementById('detalleAno').textContent = new Date(pelicula.release_date).getFullYear();
+        document.getElementById('detalleDuracion').textContent = pelicula.runtime;
+        document.getElementById('detallePresupuesto').textContent = pelicula.budget.toLocaleString();
+        document.getElementById('detalleGanancias').textContent = pelicula.revenue.toLocaleString();
+        const offcanvas = new bootstrap.Offcanvas(document.getElementById('offcanvasDetalles'));
+        offcanvas.show(); // Mostrar el offcanvas
+    }
+
+    // Función para generar estrellas basadas en la calificación
+    function obtenerEstrellas(calificacion) {
+        const estrellasLlenas = Math.floor(calificacion / 2); // Calcular estrellas llenas
+        const mediaEstrella = calificacion % 2 >= 1 ? 1 : 0; // Verificar si hay media estrella
+        const estrellasVacias = 5 - estrellasLlenas - mediaEstrella; // Calcular estrellas vacías
+        return '★'.repeat(estrellasLlenas) + '☆'.repeat(estrellasVacias) + (mediaEstrella ? '★' : ''); // Retornar cadena de estrellas
+    }
+});
